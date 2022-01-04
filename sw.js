@@ -1,7 +1,7 @@
 const allowedCDNHosts=[
     'cdn.jsdelivr.net',
     'npm.elemecdn.com',
-    'unpkg.zhimg.com',
+    // 'unpkg.zhimg.com',
     'code.bdstatic.com',
     'shadow.elemecdn.com',
     // 'lib.baomitu.com',
@@ -22,10 +22,10 @@ const CDNRegexOptions ={
         'regex': RegexList[1],
         'string':'https://{hostName}/{lib}@{version}/{path}{fileName}',
     },
-    'unpkg.zhimg.com':{
-        'regex': RegexList[1],
-        'string':'https://{hostName}/{lib}@{version}/{path}{fileName}',
-    },
+    // 'unpkg.zhimg.com':{
+    //     'regex': RegexList[1],
+    //     'string':'https://{hostName}/{lib}@{version}/{path}{fileName}',
+    // },
     'code.bdstatic.com':{
         'regex': RegexList[0],
         'string':'https://{hostName}/npm/{lib}@{version}/{path}{fileName}',
@@ -63,7 +63,7 @@ function handleError(err,signal){
 }
 function fetchURL(url,signal) {
     // console.log(signal)
-    return  fetch(url,{signal}).then(response =>{
+    return  fetch(url,{signal,referrer:"localhost"}).then(response =>{
         if (response.ok){
             return new Promise((resolve, reject)=>{return resolve({response,url})})
         }else {
@@ -87,13 +87,12 @@ self.addEventListener('install', function(event) {
 })
 self.addEventListener('fetch', function(event) {
     const request = event.request
-    event.respondWith(( (request)=> {
             // console.log(request)
             try {
                 if (request.method === 'GET') {
                     const url = new URL(request.url)
                     // console.log(url)
-                    if (allowedCDNHosts.indexOf(url.hostname) !== -1) {
+                    if (allowedCDNHosts.indexOf(url.hostname) !== -1&&url.searchParams.get('noRace')===null) {
 
                         let paths = CDNRegexOptions[url.hostname].regex.exec(url.pathname)
                         var lib, version, path,fileName
@@ -103,9 +102,11 @@ self.addEventListener('fetch', function(event) {
                         }else if (paths.length===4){
                             [, lib, version,fileName] = paths
                         }else {
+
                             return  fetch(request.url)
 
                         }
+                        event.respondWith(( (request)=> {
                         if (version === 'latest') {
                             console.warn(`${lib} uses version tag 'latest',most of Mirrors do not support this tag.`)
                         }
@@ -136,17 +137,18 @@ self.addEventListener('fetch', function(event) {
                         })
 
 
-                    }
+
+                    })(request))
 
                 }
-                return  fetch(request.url)
+                return ;
 
-            }
+            }}
             catch (e) {
                 console.warn(`Error From SW respondWith ${e}`)
-                return  fetch(request.url)
+                return;
             }
-        }
 
-    )(request))
+
+
 });
